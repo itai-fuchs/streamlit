@@ -89,13 +89,27 @@ st.plotly_chart(figpx, use_container_width=True)
 
 # Pie chart: Genre distribution
 st.divider()
-st.markdown("<h4 style='color: red;'>Genre Distribution</h4>", unsafe_allow_html=True)
-genre_counts = movies_data['genre'].value_counts().reset_index()
+st.markdown(f"<h4 style='color: red;'>Genre Distribution in {year}</h4>", unsafe_allow_html=True)
+
+# סינון לפי השנה שנבחרה
+filtered_by_year = movies_data[movies_data['year'] == year]
+
+# חישוב התפלגות ז'אנרים לפי השנה
+genre_counts = filtered_by_year['genre'].value_counts().reset_index()
 genre_counts.columns = ['genre', 'count']
-fig_genre_pie = px.pie(genre_counts, names='genre', values='count',
-                       title="Distribution of Genres",
-                       color_discrete_sequence=px.colors.sequential.RdBu)
+
+# יצירת תרשים עוגה
+fig_genre_pie = px.pie(
+    genre_counts,
+    names='genre',
+    values='count',
+    title=f"Distribution of Genres in {year}",
+    color_discrete_sequence=px.colors.sequential.RdBu
+)
+
+# הצגת התרשים
 st.plotly_chart(fig_genre_pie, use_container_width=True)
+
 
 # Bar chart: Average budget per year
 st.divider()
