@@ -3,14 +3,14 @@ import pandas as pd
 import plotly.express as px
 import matplotlib.pyplot as plt
 
-# Set up page configuration
+# Page configuration
 st.set_page_config(
     page_title="Cinema Dashboard",
     page_icon="🎬",
     layout="wide"
 )
 
-# Apply custom CSS styling for background and layout
+# Custom CSS styling for layout and background
 st.markdown("""
     <style>
     .stApp {
@@ -45,18 +45,14 @@ st.markdown("""
         padding: 10px;
         color: #111;
     }
-    
     </style>
 """, unsafe_allow_html=True)
 
 # Page title
 st.markdown("<h1 style='text-align: center; color: red;'>Movie Dashboard</h1>", unsafe_allow_html=True)
 
-
-# Load movie dataset
+# Load and clean dataset
 movies_data = pd.read_csv("movies.csv")
-
-# Drop missing values
 movies_data.dropna(inplace=True)
 
 # Sidebar filters
@@ -70,58 +66,79 @@ with st.sidebar:
     new_genre_list = st.multiselect("Choose Genre:", genre_list)
     year = st.selectbox("Choose a Year", year_list)
 
-# Filtering data according to user selections
+# Create filter masks
 score_info = movies_data['score'].between(*new_score_rating)
 genre_year = (movies_data['genre'].isin(new_genre_list)) & (movies_data["year"] == year)
 
-# Filtered table of movies by year and genre
+# Filtered movie table
 st.divider()
 st.markdown("<h4 style='color: red;'>Filtered Movies by Year and Genre</h4>", unsafe_allow_html=True)
-dataframe_genre_year = movies_data[genre_year].groupby(['name', 'genre'])['year'].sum().reset_index()
-st.dataframe(dataframe_genre_year, use_container_width=True)
+filtered_table = movies_data[genre_year][['name', 'genre', 'score', 'year', 'budget']]
+st.dataframe(filtered_table, use_container_width=True)
 
-# Line chart: Number of movies per genre (within score range)
+# Line chart: number of movies per genre, filtered by score and year
 st.divider()
-st.markdown("<h4 style='color: red;'>Number of Movies by Genre (Filtered by Score)</h4>", unsafe_allow_html=True)
-rating_count_year = movies_data[score_info].groupby('genre')['score'].count().reset_index()
-figpx = px.line(rating_count_year, x='genre', y='score')
-st.plotly_chart(figpx, use_container_width=True)
+st.markdown(f"<h4 style='color: red;'>Number of Movies by Genre in {year} (Filtered by Score)</h4>", unsafe_allow_html=True)
 
-# Pie chart: Genre distribution
+filtered_by_score_year = movies_data[
+    (movies_data['score'].between(*new_score_rating)) &
+    (movies_data['year'] == year)
+]
+
+if filtered_by_score_year.empty:
+    st.warning(f"No data available for selected score range in {year}.")
+else:
+    rating_count = filtered_by_score_year['genre'].value_counts().reset_index()
+    rating_count.columns = ['genre', 'count']
+
+    figpx = px.line(
+        rating_count,
+        x='genre',
+        y='count',
+        markers=True,
+        title=f"Number of Movies per Genre in {year} (Score: {new_score_rating[0]}–{new_score_rating[1]})"
+    )
+    st.plotly_chart(figpx, use_container_width=True)
+
+# Pie chart: genre distribution for selected year
 st.divider()
 st.markdown(f"<h4 style='color: red;'>Genre Distribution in {year}</h4>", unsafe_allow_html=True)
 
-# סינון לפי השנה שנבחרה
 filtered_by_year = movies_data[movies_data['year'] == year]
 
-# חישוב התפלגות ז'אנרים לפי השנה
-genre_counts = filtered_by_year['genre'].value_counts().reset_index()
-genre_counts.columns = ['genre', 'count']
+if filtered_by_year.empty:
+    st.warning(f"No genre data available for the year {year}.")
+else:
+    genre_counts = filtered_by_year['genre'].value_counts().reset_index()
+    genre_counts.columns = ['genre', 'count']
 
-# יצירת תרשים עוגה
-fig_genre_pie = px.pie(
-    genre_counts,
-    names='genre',
-    values='count',
-    title=f"Distribution of Genres in {year}",
-    color_discrete_sequence=px.colors.sequential.RdBu
-)
+    fig_genre_pie = px.pie(
+        genre_counts,
+        names='genre',
+        values='count',
+        title=f"Distribution of Genres in {year}",
+        color_discrete_sequence=px.colors.sequential.RdBu
+    )
+    st.plotly_chart(fig_genre_pie, use_container_width=True)
 
-# הצגת התרשים
-st.plotly_chart(fig_genre_pie, use_container_width=True)
-
-
-# Bar chart: Average budget per year
+# Bar chart: average budget by year
 st.divider()
 st.markdown("<h4 style='color: red;'>Average Budget by Year</h4>", unsafe_allow_html=True)
+
 avg_budget_year = movies_data.groupby('year')['budget'].mean().reset_index()
-fig_budget_year = px.bar(avg_budget_year, x='year', y='budget',
-                         labels={'year': 'Year', 'budget': 'Average Budget'},
-                         title="Average Movie Budget by Year",
-                         color='budget', color_continuous_scale='Blues')
+
+fig_budget_year = px.bar(
+    avg_budget_year,
+    x='year',
+    y='budget',
+    labels={'year': 'Year', 'budget': 'Average Budget'},
+    title="Average Movie Budget by Year",
+    color='budget',
+    color_continuous_scale='Blues'
+)
 st.plotly_chart(fig_budget_year, use_container_width=True)
 
-# Bar chart: Distribution of scores (based on user selection)
+# Bar chart: score distribution based on all user selections
 st.divider()
 st.markdown("<h4 style='color: red;'>Score Distribution (Based on Selection)</h4>", unsafe_allow_html=True)
 
@@ -151,5 +168,4 @@ else:
         color='count',
         color_continuous_scale='Plasma'
     )
-
     st.plotly_chart(fig_score_dist, use_container_width=True)
